@@ -308,6 +308,17 @@ var DOM = BEM.DOM = BEM.decl('i-bem__dom', {
     },
 
     /**
+     * Unbind all marked listeners of block
+     */
+    _autoUnbind : function () {
+
+        this._autoUnRegistry.forEach(function(listener) {
+            this.un(listener.name, listener.fn);
+        })
+
+    },
+
+    /**
      * Finds blocks inside the current block or its elements (including context)
      * @protected
      * @param {String|jQuery} [elem] Block element
@@ -983,6 +994,8 @@ var DOM = BEM.DOM = BEM.decl('i-bem__dom', {
         delete _this.domElem;
         delete _this._elemCache;
 
+        this._autoUnbind();
+
         _this.__base();
 
     }
@@ -1475,8 +1488,36 @@ var DOM = BEM.DOM = BEM.decl('i-bem__dom', {
      * @param {Object} [data] Additional information that the handler gets as e.data
      * @param {Function} fn Handler
      * @param {Object} [fnCtx] Handler's context
+     * @param {String} [isAutoUn] Unbind when module'll be destruct
      */
-    on : function(ctx, e, data, fn, fnCtx) {
+    on : function(ctx, e, data, fn, fnCtx, isAutoUn) {
+
+        var args = new Array(arguments.length);
+
+        for(var i = 0; i < args.length; ++i) {
+            args[i] = arguments[i];
+        }
+
+        var checkAnyArg = function(args, indexes) {
+
+            for(var i, l = indexes.length; i < l; ++i) {
+                if (args[indexes[i]] === true) {
+                    return true;
+                }
+            }
+
+            return false;
+
+        };
+
+        var hasAutoUn = function(args) {
+            return typeof args[0] === 'string' && checkAnyArg(args, [2, 3, 4])
+                || typeof args[0] !== 'string' && checkAnyArg(args, [3, 4, 5]);
+        };
+
+        if (hasAutoUn(args)) {
+            this._autoUnRegistry.push({ name: e, fn: fn });
+        }
 
         return ctx.jquery?
             this._liveCtxBind(ctx, e, data, fn, fnCtx) :
