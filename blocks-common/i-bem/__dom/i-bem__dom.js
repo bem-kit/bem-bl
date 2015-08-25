@@ -312,9 +312,9 @@ var DOM = BEM.DOM = BEM.decl('i-bem__dom', {
      */
     _autoUnbind : function () {
 
-        this._autoUnRegistry.forEach(function(listener) {
+        (this._autoUnRegistry || []).forEach(function(listener) {
             this.un(listener.name, listener.fn);
-        })
+        });
 
     },
 
@@ -1479,6 +1479,14 @@ var DOM = BEM.DOM = BEM.decl('i-bem__dom', {
 
     },
 
+    _markOn : function(e, fn, isAutoUn) {
+
+        if (isAutoUn) {
+            this._autoUnRegistry.push({ name: e, fn: fn });
+        }
+
+    },
+
     /**
      * Adds a live event handler to a block, based on a specified element where the event will be listened for
      * @static
@@ -1498,29 +1506,8 @@ var DOM = BEM.DOM = BEM.decl('i-bem__dom', {
             args[i] = arguments[i];
         }
 
-        var checkAnyArg = function(args, indexes) {
-
-            for(var i, l = indexes.length; i < l; ++i) {
-                if (args[indexes[i]] === true) {
-                    return true;
-                }
-            }
-
-            return false;
-
-        };
-
-        var hasAutoUn = function(args) {
-            return typeof args[0] === 'string' && checkAnyArg(args, [2, 3, 4])
-                || typeof args[0] !== 'string' && checkAnyArg(args, [3, 4, 5]);
-        };
-
-        if (hasAutoUn(args)) {
-            this._autoUnRegistry.push({ name: e, fn: fn });
-        }
-
         return ctx.jquery?
-            this._liveCtxBind(ctx, e, data, fn, fnCtx) :
+            this._liveCtxBind(ctx, e, data, fn, fnCtx, isAutoUn) :
             this.__base(ctx, e, data, fn);
 
     },
@@ -1569,16 +1556,19 @@ var DOM = BEM.DOM = BEM.decl('i-bem__dom', {
      * @param {Function} fn Handler
      * @param {Object} [fnCtx] Handler context
      */
-    _liveCtxBind : function(ctx, e, data, fn, fnCtx) {
+    _liveCtxBind : function(ctx, e, data, fn, fnCtx, isAutoUn) {
 
         var _this = this;
 
         if(typeof e == 'string') {
             if($.isFunction(data)) {
+                isAutoUn = fnCtx;
                 fnCtx = fn;
                 fn = data;
                 data = undefined;
             }
+
+            this._markOn(e, fn, isAutoUn);
 
             if(e.indexOf(' ') > -1) {
                 e.split(' ').forEach(function(e) {
